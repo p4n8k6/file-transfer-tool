@@ -1,7 +1,6 @@
 import os
-import tkface
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext, filedialog
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from engine.transfer_engine import FileTransferEngine
@@ -23,7 +22,7 @@ class FileTransferUI(TkinterDnD.Tk):
         """
         super().__init__()
         self.title("非対称バックアップ")
-        self.geometry("260x380")
+        self.geometry("260x450")
         self.dst_path_str = ""
 
         self.initUI()
@@ -41,13 +40,6 @@ class FileTransferUI(TkinterDnD.Tk):
 
         src_frame = ttk.Frame(main_frame)
         src_frame.pack(fill=tk.X, pady=(2, 2))
-
-        # 参照ボタン（先に幅を確保）
-        btn_src_browse = ttk.Button(
-            src_frame, text="参照...", width=6,
-            command=self.select_source
-        )
-        btn_src_browse.pack(side=tk.RIGHT, padx=(4, 0))
 
         # リストとスクロールバー用フレーム
         src_list_frame = ttk.Frame(src_frame)
@@ -86,11 +78,29 @@ class FileTransferUI(TkinterDnD.Tk):
 
         self.src_list.config(yscrollcommand=src_vscroll.set)
 
-        # ドラッグ＆ドロップ設定（ソース）
+        # ドラッグ＆ドロップ設定
         self.src_list.drop_target_register(DND_FILES)
         self.src_list.dnd_bind('<<Drop>>', self.drop_on_src_list)
 
-        # クリアボタン（ここから下は変更なし）
+        # ファイル・フォルダ追加ボタン
+        src_button_frame = ttk.Frame(main_frame)
+        src_button_frame.pack(fill=tk.X, pady=(2, 4))
+
+        btn_src_file = ttk.Button(
+            src_button_frame,
+            text="ファイルを追加",
+            command=self.select_source_file
+        )
+        btn_src_file.pack(fill=tk.X, pady=(0, 2))
+
+        btn_src_dir = ttk.Button(
+            src_button_frame,
+            text="フォルダを追加",
+            command=self.select_source_directory
+        )
+        btn_src_dir.pack(fill=tk.X)
+
+        # クリアボタン
         btn_clear = ttk.Button(main_frame, text="リストをクリア", command=self.clear_list)
         btn_clear.pack(fill=tk.X, pady=(0, 6))
 
@@ -183,20 +193,28 @@ class FileTransferUI(TkinterDnD.Tk):
         cleaned = [p.strip('{}') for p in paths]
         return [os.path.abspath(p) for p in cleaned if p]
 
-    def select_source(self):
+    def select_source_file(self):
+        """コピー元のファイル選択ダイアログを表示する。
         """
-        コピー元のファイル・ディレクトリ選択ダイアログを表示する。
-
-        複数選択されたパスを取得し、対象アイテムリストに追加する。
-        """
-        paths = tkface.pathchooser.askpath(
-        select="both",
-        multiple=True,
-        initialdir=os.path.expanduser("~")
+        path = filedialog.askopenfilename(
+            title="コピー元ファイルを選択",
+            initialdir=os.path.expanduser("~")
         )
 
-        if paths:
-            self.add_source_paths(paths)
+        if path:
+            self.add_source_paths([path])
+
+
+    def select_source_directory(self):
+        """コピー元のフォルダ選択ダイアログを表示する。
+        """
+        path = filedialog.askdirectory(
+            title="コピー元フォルダを選択",
+            initialdir=os.path.expanduser("~")
+        )
+
+        if path:
+            self.add_source_paths([path])
 
     def drop_on_src_list(self, event):
         """
@@ -234,16 +252,22 @@ class FileTransferUI(TkinterDnD.Tk):
         コピー先ディレクトリ選択ダイアログを表示する。
         選択されたディレクトリのパスを保持し、
         コピー先欄の表示を更新する。
-        """
-        paths = tkface.pathchooser.askdirectory(title="コピー先フォルダを選択")
-        if paths:
-            path = paths[0]
-            print("selected path:", repr(path))
+        """        
+        path = filedialog.askdirectory(
+            title="コピー先フォルダを選択",
+            initialdir=os.path.expanduser("~")
+        )
+
+        if path:
             self.dst_path_str = path
             self.dst_box.config(state="normal")
             self.dst_box.delete(0, tk.END)
             self.dst_box.insert(0, f"コピー先: {path}")
-            self.dst_box.config(state="readonly", readonlybackground="#e8f5e9", fg="#2e7d32")
+            self.dst_box.config(
+                state="readonly",
+                readonlybackground="#e8f5e9",
+                fg="#2e7d32"
+            )
 
     def clear_list(self):
         """
